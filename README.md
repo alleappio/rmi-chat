@@ -1,15 +1,38 @@
 # RMI-Chat
 > Proposta di progetto per il corso di Algoritmi distribuiti
 
-## 1 Obiettivo
+## Installazione:
+```bash
+git clone https://github.com/alleappio/rmi-chat.git
+cd rmi-chat
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .
+```
+
+## Esecuzione
+Per avviare il server:
+```bash
+source .venv/bin/activate
+chat-server
+```
+
+Per avviare il client:
+```bash
+source .venv/bin/activate
+chat-client
+```
+
+## Descrizione
+### 1 Obiettivo
 L’obiettivo del progetto è lo sviluppo di un’applicazione di chat basata su un’architettura client-server. Il server rappresenta il punto centralizzato di comunicazione tra i client e fornisce i servizi necessari alla gestione delle conversazioni, supportando sia chat private tra due utenti sia canali pubblici a cui possono partecipare più client contemporaneamente.
 Ogni client potrà connettersi liberamente a uno dei server disponibili, consentendo all’utente di scegliere quello geograficamente più vicino e potenzialmente più efficiente in termini di latenza.
 
-## 2 Topologia
+### 2 Topologia
 Il sistema adotta una topologia asimmetrica basata su due tipologie di nodi: client e server. Il server rappresenta il nodo centrale che eroga il servizio di chat e costituisce l’unico punto di interazione attraverso cui i client possono comunicare all’interno della rete. Tutte le comunicazioni tra client avvengono quindi indirettamente tramite il server, che funge da intermediario e coordinatore delle interazioni.
 
-## 3 Funzionamento
-### 3.1 Server
+### 3 Funzionamento
+#### 3.1 Server
 Il server espone i seguenti servizi principali:
 - richiesta della lista dei canali testuali disponibili;
 - richiesta della lista degli utenti attualmente online;
@@ -19,15 +42,15 @@ Il server espone i seguenti servizi principali:
 
 Ogni client può essere connesso esclusivamente a un singolo contesto di comunicazione alla volta, ovvero a un canale pubblico oppure a una chat privata, ma non a entrambi simultaneamente.
 
-## 3.2 Client
-### 3.2.1 Stati
+### 3.2 Client
+#### 3.2.1 Stati
 Ogni client può trovarsi in uno dei seguenti stati:
 - Disconnected: il client non è connesso al server;
 - InLobby: il client è connesso al server ma non partecipa a nessuna conversazione attiva;
 - InChannel: il client è connesso a un canale pubblico;
 - InPrivateChat: il client è impegnato in una chat privata con un altro utente.
 
-### 3.2.2 Interfaccia
+#### 3.2.2 Interfaccia
 Il client espone un’interfaccia testuale che consente all’utente di eseguire le seguenti operazioni, organizzate in base allo stato corrente:
 1. Connessione al server [Disconnected] → [InLobby]
     - il client tenta la connessione al server;
