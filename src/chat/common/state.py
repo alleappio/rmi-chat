@@ -3,3 +3,4 @@ class State:
     LOBBY = 1
     CHANNEL = 2
     PRIVATE = 3
+    QUIT = 4

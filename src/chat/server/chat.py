@@ -4,6 +4,8 @@ from chat.server.clientInfo import ClientInfo
 @Pyro5.api.expose
 class Chat:
     clients = {}
+    channels = []
+
     def connect(self, uri, username):
         self.clients[uri] = ClientInfo(uri, username)
         self.broadcast("SYSTEM", f"{username} joined the server")
@@ -14,10 +16,16 @@ class Chat:
             self.clients.pop(uri)
             self.broadcast("SYSTEM", f"{client.username} left the chat")
 
+    def welcome(self):
+        return "Welcome to rmi-chat"
+
     def send(self, uri, message):
         client = self.clients.get(uri)
         if client:
             self.broadcast(client.username, message)
+
+    def get_channels(self):
+        return self.channels
 
     def broadcast(self, sender, message):
         dead_client = []
