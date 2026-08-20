@@ -1,0 +1,10 @@
+[project]
+name = "rmi-chat"
+version = "0.1.0"
+dependencies = [
+    "Pyro5",
+]
+
+[project.scripts]
+chat-server = "chat.server.server:main"
+chat-client = "chat.client.client:main"

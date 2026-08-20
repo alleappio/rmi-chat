@@ -1,14 +1,21 @@
 import Pyro5.api
 import threading
+from chat.common.state import State
 
 
 @Pyro5.api.expose
 class Client:
+    def __init__(self):
+        self.state = State.DISCONNECTED
+
     def set_username(self, username):
         self.username = username
 
     def set_uri(self, uri):
         self.uri = uri
+
+    def set_state(self, state):
+        self.state = state
 
     def receive(self, sender, message):
         print(f"\n{sender}: {message}")
