@@ -1,0 +1,6 @@
+name = "foobar.rmi-chat"
+channels = [
+    "general",
+    "tech",
+    "games"
+]
