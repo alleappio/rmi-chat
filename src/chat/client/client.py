@@ -1,4 +1,5 @@
 import Pyro5.api
+import os
 import threading
 from chat.common.state import State
 
@@ -10,6 +11,7 @@ class Client:
         self.username = ""
         self.server_uri = ""
         self.chat = Pyro5.api.Proxy
+        self.just_entered = False
 
     def set_uri(self, uri):
         self.uri = uri
@@ -36,13 +38,16 @@ def state_machine(client):
             client.chat = Pyro5.api.Proxy(server_uri)
             client.chat.connect(client.uri, client.username)
             client.state = State.LOBBY
+            client.just_entered = True
             return
         elif choice == 2:
             client.state = State.QUIT
             return
 
     elif client.state == State.LOBBY:
-        print(client.chat.welcome())
+        if client.just_entered:
+            print(client.chat.welcome())
+            client.just_entered = False
         choice = menu((
             "1. enter channel",
             "2. channel list",
@@ -54,27 +59,39 @@ def state_machine(client):
             client.state = State.CHANNEL
             return
         elif choice == 2:
-            print(client.chat.get_channels())
+            for i in client.chat.get_channels():
+                print(i)
             return
         elif choice == 3:
             client.chat.leave(client.uri)
+            print("should have leaved")
             client.state = State.DISCONNECTED
             return
 
     elif client.state == State.CHANNEL:
         print("you are now in a channel, type '/quit' to quit the channel and go back to the lobby")
-        while True:
-            message = input("> ")
-            if message == "/quit":
-                client.chat.leave_channel(client.uri)
+        while client.state == State.CHANNEL:
+            try:
+                message = input("> ")
+                if message == "/quit":
+                    client.chat.leave_channel(client.uri)
+                    client.state = State.LOBBY
+                    return
+                if message:
+                    client.chat.send(client.uri, message)
+            except KeyboardInterrupt:
+                print("exit channel")
                 client.state = State.LOBBY
                 return
-            if message:
-                client.chat.send(client.uri, message)
+            except Exception as e:
+                print(e)
+                client.state = State.LOBBY
+                return
 
 
 
 def main():
+    os.system("clear")
     name = input("Your username: ")
     client = Client()
     client.username = name
@@ -92,8 +109,8 @@ def main():
             state_machine(client)
         except Exception as e:
             print(e)
-        finally:
-            client.chat.leave(client.uri)
+            if client.chat:
+                client.chat.leave(client.uri)
 
 if __name__ == '__main__':
     main()

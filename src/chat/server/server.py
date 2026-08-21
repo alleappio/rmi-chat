@@ -12,7 +12,9 @@ def main():
     config = load_config("config/config.toml")
     channels = config["channels"]
     daemon = Pyro5.api.Daemon()
-    uri = daemon.register(Chat, objectId=config["name"])
+    chatObject = Chat()
+    chatObject.channels = channels
+    uri = daemon.register(chatObject, objectId=config["name"])
 
     print("Chat server:", uri)
     print("Run the client with this URI.")

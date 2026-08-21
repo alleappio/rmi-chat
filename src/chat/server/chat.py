@@ -4,7 +4,8 @@ from chat.server.clientInfo import ClientInfo
 @Pyro5.api.expose
 class Chat:
     clients = {}
-    channels = []
+    def set_channels(self, channels):
+        self.channels = channels
 
     def connect(self, uri, username):
         self.clients[uri] = ClientInfo(uri, username)
@@ -13,19 +14,55 @@ class Chat:
     def leave(self, uri):
         client = self.clients.get(uri)
         if client:
+            print(f"{client.username} left")
             self.clients.pop(uri)
             self.broadcast("SYSTEM", f"{client.username} left the chat")
 
     def welcome(self):
-        return "Welcome to rmi-chat"
+        clientsString = ""
+        for i in self.clients:
+            clientsString+=f"{self.clients[i].username}\n"
+
+        return f"Welcome to rmi-chat\nCurrently logged in:\n{clientsString}"
 
     def send(self, uri, message):
         client = self.clients.get(uri)
         if client:
-            self.broadcast(client.username, message)
+            if client.in_channel:
+                self.send_in_channel(client.username, message, client.channel)
+            # self.broadcast(client.username, message)
 
     def get_channels(self):
         return self.channels
+
+    def enter_channel(self, uri, channel):
+        client = self.clients.get(uri)
+        if client:
+            client.in_channel = True
+            client.channel = channel
+            if channel not in self.channels:
+                self.channels.append(channel)
+
+    def leave_channel(self, uri):
+        client = self.clients.get(uri)
+        if client:
+            client.in_channel = False
+            client.channel = ""
+
+    def send_in_channel(self, sender, message, channel):
+        dead_client = []
+        for uri in self.clients:
+            try:
+                if self.clients[uri].in_channel and self.clients[uri].channel == channel:
+                    self.clients[uri].create_proxy().receive(sender, message)
+                    print(f"{sender}@{channel}: {message}")
+            except Exception as e:
+                dead_client.append(uri)
+                print(e)
+
+        for i in dead_client:
+            print(f"{clients[i].username} is dead")
+            self.leave(i)
 
     def broadcast(self, sender, message):
         dead_client = []
@@ -38,4 +75,5 @@ class Chat:
                 print(e)
 
         for i in dead_client:
+            print(f"{clients[i].username} is dead")
             self.leave(i)
