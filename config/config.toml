@@ -1,4 +1,6 @@
 name = "foobar.rmi-chat"
+welcome-message = "welcome to the foobar server"
+verbose = true
 channels = [
     "general",
     "tech",

@@ -14,6 +14,8 @@ def main():
     daemon = Pyro5.api.Daemon()
     chatObject = Chat()
     chatObject.channels = channels
+    chatObject.welcomeMessage = config["welcome-message"]
+    chatObject.verbose = config["verbose"]
     uri = daemon.register(chatObject, objectId=config["name"])
 
     print("Chat server:", uri)

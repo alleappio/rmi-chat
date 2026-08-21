@@ -1,7 +1,9 @@
 import Pyro5.api
 import os
 import threading
+import inquirer
 from chat.common.state import State
+import chat.common.utils as utils
 
 
 @Pyro5.api.expose
@@ -17,23 +19,19 @@ class Client:
         self.uri = uri
 
     def receive(self, sender, message):
-        print(f"\n{sender}: {message}")
+        print(f"\r{sender}: {message}")
         print("> ", end="", flush=True)
 
-def menu(options: tuple):
-    for i in options:
-        print(i)
-    choice = int(input("> "))
-    return choice
 
 def state_machine(client):
     if client.state == State.DISCONNECTED:
-        choice = menu((
+        choice = utils.menu((
             "1. connect to a server",
             "2. quit"
         ))
         if choice == 1:
-            server_uri = input("Server URI: ")
+            # server_uri = input("Server URI: ")
+            server_uri = utils.question("Server URI")
             client.server_uri = server_uri
             client.chat = Pyro5.api.Proxy(server_uri)
             client.chat.connect(client.uri, client.username)
@@ -48,13 +46,13 @@ def state_machine(client):
         if client.just_entered:
             print(client.chat.welcome())
             client.just_entered = False
-        choice = menu((
+        choice = utils.menu((
             "1. enter channel",
             "2. channel list",
             "3. quit"
         ))
         if choice == 1:
-            channel = str(input("insert the channel name: "))
+            channel = utils.question("insert the channel name")
             client.chat.enter_channel(client.uri, channel)
             client.state = State.CHANNEL
             return
@@ -64,7 +62,6 @@ def state_machine(client):
             return
         elif choice == 3:
             client.chat.leave(client.uri)
-            print("should have leaved")
             client.state = State.DISCONNECTED
             return
 
@@ -78,6 +75,7 @@ def state_machine(client):
                     client.state = State.LOBBY
                     return
                 if message:
+                    print(f"\r{client.username}: {message}", flush=True)
                     client.chat.send(client.uri, message)
             except KeyboardInterrupt:
                 print("exit channel")
@@ -92,7 +90,7 @@ def state_machine(client):
 
 def main():
     os.system("clear")
-    name = input("Your username: ")
+    name = utils.question("Your username")
     client = Client()
     client.username = name
     daemon = Pyro5.api.Daemon()

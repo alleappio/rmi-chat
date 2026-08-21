@@ -3,6 +3,7 @@ name = "rmi-chat"
 version = "0.1.0"
 dependencies = [
     "Pyro5",
+    "inquirer",
 ]
 
 [project.scripts]
