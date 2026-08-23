@@ -6,6 +6,8 @@ class ClientInfo:
         self.username = username
         self.channel = ""
         self.in_channel = False
+        self.in_private = False
+        self.private_relative = ""
         self.private_requests = []
 
     def create_proxy(self):

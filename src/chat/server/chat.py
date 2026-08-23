@@ -20,12 +20,10 @@ class Chat:
     def connect(self, uri, username):
         self.clients[uri] = ClientInfo(uri, username)
         self.debug_log(f"{username} joined the server")
-        self.notify_all(f"{username} joined the server")
 
     def leave(self, uri):
         client = self.clients.get(uri)
         if client:
-            print(f"{client.username} left")
             self.clients.pop(uri)
             self.debug_log(f"{client.username} left the chat")
 
@@ -44,19 +42,34 @@ class Chat:
         if client:
             if client.in_channel:
                 self.send_in_channel(client.username, message, client.channel)
+            if client.in_private:
+                self.send_in_private(client.uri, message)
             # self.debug_log(message)
 
     def notify_to_uri(self, uri, message):
         self.clients[uri].create_proxy().notify(message)
 
-    def open_private(self, uri, other_username):
-        other_uri = self.get_uri_from_usernmae(other_username)
-        if other_uri in self.clients[uri].private_requests:
-            #open connection between the two
-            pass
-        else:
-            self.clients[other_uri].private_requests.append(uri)
-            self.notify_to_uri(other_uri, f"{self.clients[uri].username} requested a private chat")
+    def get_private_requests(self, uri):
+        return self.clients.get(uri).private_requests
+
+    def enter_private(self, uri, other_username):
+        client = self.clients.get(uri)
+        other = self.clients.get(self.get_uri_from_usernmae(other_username))
+        if other and client:
+            if other.uri in client.private_requests:
+                client.private_relative = other.uri
+                client.private_requests.remove(other.uri)
+            else:
+                other.private_requests.append(uri)
+                client.private_relative = other.uri
+                self.notify_to_uri(other.uri, f"{client.username} requested a private chat")
+            client.in_private = True
+
+    def leave_private(self, uri):
+        client = self.clients.get(uri)
+        other = self.clients.get(client.private_relative)
+        client.private_relative = ""
+        other.private_relative = ""
 
     def get_channels(self):
         return self.channels
@@ -89,6 +102,11 @@ class Chat:
         for i in dead_client:
             self.debug_log(f"{self.clients[i].username} is dead")
             self.leave(i)
+
+    def send_in_private(self, uri, message):
+        client = self.clients.get(uri)
+        other = self.clients.get(client.private_relative)
+        other.create_proxy().receive(client.username, message)
 
     def notify_all(self,message):
         dead_client = []

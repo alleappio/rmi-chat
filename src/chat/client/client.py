@@ -9,6 +9,7 @@ class Client:
         self.server_uri = ""
         self.chat = Pyro5.api.Proxy
         self.current_channel = ""
+        self.other_private = ""
 
     def set_uri(self, uri):
         self.uri = uri

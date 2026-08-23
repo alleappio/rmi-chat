@@ -30,10 +30,12 @@ class StateMachine:
             print(self.client.chat.welcome())
             self.just_entered = False
         choice = utils.menu((
-            "enter channel",
-            "channel list",
-            "connected users",
-            "quit"
+            "Enter channel",
+            "Enter private conversation",
+            "Channel list",
+            "Connected users",
+            "Private requests",
+            "Quit"
         ))
         if choice == 1:
             channel = utils.question("insert the channel name")
@@ -42,17 +44,26 @@ class StateMachine:
             self.client.state = state.CHANNEL
             return
         elif choice == 2:
+            other_username =  utils.question("Insert others username")
+            self.client.chat.enter_private(self.client.uri, other_username)
+            self.other_private = other_username
+            self.client.state = state.PRIVATE
+        elif choice == 3:
             print("Channel list:")
             for i in self.client.chat.get_channels():
                 print(i)
             print("")
             return
-        elif choice == 3:
+        elif choice == 4:
             connected = self.client.chat.get_connected()
             print("connected users:")
             print(connected)
             return
-        elif choice == 4:
+        elif choice == 5:
+            req = self.client.chat.get_private_requests(self.client.uri)
+            print(req)
+
+        elif choice == 6:
             self.client.chat.leave(self.client.uri)
             self.client.state = state.DISCONNECTED
             return
@@ -78,6 +89,27 @@ class StateMachine:
                 self.client.state = state.LOBBY
                 return
 
+    def private(self):
+        print(f"you are now in a chat with {self.client.other_private}, type '/quit' to quit the channel and go back to the lobby")
+        while self.client.state == state.PRIVATE:
+            try:
+                message = input("> ")
+                if message == "/quit":
+                    self.client.chat.leave_private(self.client.uri)
+                    self.client.state = state.LOBBY
+                    return
+                if message:
+                    print(f"\r{self.client.username}: {message}", flush=True)
+                    self.client.chat.send(self.client.uri, message)
+            except KeyboardInterrupt:
+                print("exit channel")
+                self.client.state = state.LOBBY
+                return
+            except Exception as e:
+                print(e)
+                self.client.state = state.LOBBY
+                return
+
     def stateMachine(self):
         if self.client.state == state.DISCONNECTED:
             self.disconnected()
@@ -88,3 +120,5 @@ class StateMachine:
         elif self.client.state == state.CHANNEL:
             self.channel()
 
+        elif self.client.state == state.PRIVATE:
+            self.private()
