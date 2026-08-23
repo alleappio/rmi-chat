@@ -8,4 +8,4 @@ dependencies = [
 
 [project.scripts]
 chat-server = "chat.server.server:main"
-chat-client = "chat.client.client:main"
+chat-client = "chat.client.clientMain:main"

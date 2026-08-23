@@ -6,6 +6,7 @@ class ClientInfo:
         self.username = username
         self.channel = ""
         self.in_channel = False
+        self.private_requests = []
 
     def create_proxy(self):
         return Pyro5.api.Proxy(self.uri)
