@@ -11,7 +11,7 @@ def load_config(filename):
 def main():
     config = load_config("config/config.toml")
     channels = config["channels"]
-    daemon = Pyro5.api.Daemon(host="0.0.0.0")
+    daemon = Pyro5.api.Daemon(host=config["host"])
     chatObject = Chat()
     chatObject.channels = channels
     chatObject.welcomeMessage = config["welcome-message"]
