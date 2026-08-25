@@ -1,3 +1,4 @@
+import sys
 import Pyro5.api
 import chat.client.client as client
 import chat.common.utils as utils
@@ -34,7 +35,7 @@ class StateMachine:
             "Enter private conversation",
             "Channel list",
             "Connected users",
-            "Private requests",
+            f"Private requests [{len(self.client.chat.get_private_requests(self.client.uri))}]",
             "Quit"
         ))
         if choice == 1:
@@ -43,25 +44,32 @@ class StateMachine:
             self.client.current_channel = channel
             self.client.state = state.CHANNEL
             return
+
         elif choice == 2:
             other_username =  utils.question("Insert others username")
             self.client.chat.enter_private(self.client.uri, other_username)
             self.other_private = other_username
             self.client.state = state.PRIVATE
+
         elif choice == 3:
             print("Channel list:")
             for i in self.client.chat.get_channels():
                 print(i)
             print("")
             return
+
         elif choice == 4:
             connected = self.client.chat.get_connected()
             print("connected users:")
             print(connected)
             return
+
         elif choice == 5:
             req = self.client.chat.get_private_requests(self.client.uri)
-            print(req)
+            print("private requests: ")
+            for i in req:
+                print(f"- {i}")
+
 
         elif choice == 6:
             self.client.chat.leave(self.client.uri)
@@ -74,10 +82,10 @@ class StateMachine:
             try:
                 message = input("> ")
                 if message == "/quit":
-                    self.client.chat.leave_channel(self.client.uri)
                     self.client.state = state.LOBBY
                     return
                 if message:
+                    sys.stdout.write("\033[F")
                     print(f"\r{self.client.username}: {message}", flush=True)
                     self.client.chat.send(self.client.uri, message)
             except KeyboardInterrupt:
@@ -88,6 +96,7 @@ class StateMachine:
                 print(e)
                 self.client.state = state.LOBBY
                 return
+        self.client.chat.leave_channel(self.client.uri)
 
     def private(self):
         print(f"you are now in a chat with {self.client.other_private}, type '/quit' to quit the channel and go back to the lobby")
@@ -95,10 +104,10 @@ class StateMachine:
             try:
                 message = input("> ")
                 if message == "/quit":
-                    self.client.chat.leave_private(self.client.uri)
                     self.client.state = state.LOBBY
                     return
                 if message:
+                    sys.stdout.write("\033[F")
                     print(f"\r{self.client.username}: {message}", flush=True)
                     self.client.chat.send(self.client.uri, message)
             except KeyboardInterrupt:
@@ -109,6 +118,7 @@ class StateMachine:
                 print(e)
                 self.client.state = state.LOBBY
                 return
+        self.client.chat.leave_private(self.client.uri)
 
     def stateMachine(self):
         if self.client.state == state.DISCONNECTED:

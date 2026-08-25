@@ -12,7 +12,7 @@ class Chat:
         if self.verbose:
             print(f"DEBUG: {message}")
 
-    def get_uri_from_usernmae(self, username):
+    def get_uri_from_username(self, username):
         for uri in self.clients:
             if self.clients[uri].username == username:
                 return uri
@@ -50,11 +50,14 @@ class Chat:
         self.clients[uri].create_proxy().notify(message)
 
     def get_private_requests(self, uri):
-        return self.clients.get(uri).private_requests
+        requests = []
+        for i in self.clients[uri].private_requests:
+            requests.append(self.clients[i].username)
+        return requests
 
     def enter_private(self, uri, other_username):
         client = self.clients.get(uri)
-        other = self.clients.get(self.get_uri_from_usernmae(other_username))
+        other = self.clients.get(self.get_uri_from_username(other_username))
         if other and client:
             if other.uri in client.private_requests:
                 client.private_relative = other.uri
@@ -70,6 +73,7 @@ class Chat:
         other = self.clients.get(client.private_relative)
         client.private_relative = ""
         other.private_relative = ""
+        other.create_proxy().quit_private()
 
     def get_channels(self):
         return self.channels
@@ -79,6 +83,7 @@ class Chat:
         if client:
             client.in_channel = True
             client.channel = channel
+            self.send_in_channel("SYSTEM", f"{client.username} joined {channel}", channel)
             if channel not in self.channels:
                 self.channels.append(channel)
 
@@ -86,6 +91,7 @@ class Chat:
         client = self.clients.get(uri)
         if client:
             client.in_channel = False
+            self.send_in_channel("SYSTEM", f"{client.username} left {client.channel}", client.channel)
             client.channel = ""
 
     def send_in_channel(self, sender, message, channel):
@@ -97,6 +103,7 @@ class Chat:
                     self.debug_log(f"{sender}@{channel}: {message}")
             except Exception as e:
                 dead_client.append(uri)
+                print("found dead client")
                 print(e)
 
         for i in dead_client:

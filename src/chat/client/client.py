@@ -20,3 +20,8 @@ class Client:
 
     def notify(self, message):
         print(f"SERVER: {message}")
+
+    def quit_private(self):
+        if self.state == state.PRIVATE:
+            self.state = state.LOBBY
+            # self.other_private = ""
