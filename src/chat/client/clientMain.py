@@ -26,9 +26,11 @@ def main():
         try:
             state_machine.stateMachine()
         except Exception as e:
+            # si blocca qui
             print(e)
             if clientObj.chat:
                 clientObj.chat.leave(clientObj.uri)
+            exit()
 
 if __name__ == '__main__':
     main()

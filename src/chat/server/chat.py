@@ -18,8 +18,11 @@ class Chat:
                 return uri
 
     def connect(self, uri, username):
+        if any(self.clients[uri].username == username for uri in self.clients):
+            return 1
         self.clients[uri] = ClientInfo(uri, username)
         self.debug_log(f"{username} joined the server")
+        return 0
 
     def leave(self, uri):
         client = self.clients.get(uri)
@@ -28,13 +31,16 @@ class Chat:
             self.debug_log(f"{client.username} left the chat")
 
     def get_connected(self):
-        clientsString = ""
+        connected = []
         for i in self.clients:
-            clientsString+=f"- {self.clients[i].username}\n"
-        return clientsString
+            connected.append(self.clients[i].username)
+        return connected
 
     def welcome(self):
-        clientsString = self.get_connected()
+        clientsString = ""
+        connected = self.get_connected()
+        for i in connected:
+            clientsString+=f"- {i}\n"
         return f"{self.welcomeMessage}\nCurrently logged in:\n{clientsString}"
 
     def send(self, uri, message):
@@ -56,6 +62,8 @@ class Chat:
         return requests
 
     def enter_private(self, uri, other_username):
+        if not any(self.clients[uri].username == other_username for uri in self.clients):
+            return 1
         client = self.clients.get(uri)
         other = self.clients.get(self.get_uri_from_username(other_username))
         if other and client:
@@ -67,6 +75,7 @@ class Chat:
                 client.private_relative = other.uri
                 self.notify_to_uri(other.uri, f"{client.username} requested a private chat")
             client.in_private = True
+        return 0
 
     def leave_private(self, uri):
         client = self.clients.get(uri)
@@ -128,4 +137,3 @@ class Chat:
         for i in dead_client:
             self.debug_log(f"{self.clients[i].username} is dead")
             self.leave(i)
-

@@ -12,17 +12,24 @@ class StateMachine:
     def disconnected(self):
         choice = utils.menu((
             "connect to a server",
+            "change username",
             "quit"
         ))
         if choice == 1:
             server_uri = utils.question("Server URI")
             self.client.server_uri = server_uri
             self.client.chat = Pyro5.api.Proxy(server_uri)
-            self.client.chat.connect(self.client.uri, self.client.username)
-            self.client.state = state.LOBBY
-            self.just_entered = True
+            result = self.client.chat.connect(self.client.uri, self.client.username)
+            if result == 0:
+                self.client.state = state.LOBBY
+                self.just_entered = True
+            else:
+                print(f"Username {self.client.username} already in use, please choose another username")
             return
         elif choice == 2:
+            name = utils.question("Your new username")
+            self.client.username = name
+        elif choice == 3:
             self.client.state = state.QUIT
             return
 
@@ -47,21 +54,26 @@ class StateMachine:
 
         elif choice == 2:
             other_username =  utils.question("Insert others username")
-            self.client.chat.enter_private(self.client.uri, other_username)
-            self.other_private = other_username
-            self.client.state = state.PRIVATE
+            result = self.client.chat.enter_private(self.client.uri, other_username)
+            if result == 0:
+                self.other_private = other_username
+                self.client.state = state.PRIVATE
+            else:
+                print(f"User {other_username} is not connected")
 
         elif choice == 3:
             print("Channel list:")
             for i in self.client.chat.get_channels():
-                print(i)
+                print(f"- {i}")
             print("")
             return
 
         elif choice == 4:
             connected = self.client.chat.get_connected()
             print("connected users:")
-            print(connected)
+            for i in connected:
+                print(f"- {i}")
+            print("")
             return
 
         elif choice == 5:
@@ -69,7 +81,7 @@ class StateMachine:
             print("private requests: ")
             for i in req:
                 print(f"- {i}")
-
+            print("")
 
         elif choice == 6:
             self.client.chat.leave(self.client.uri)
