@@ -1,0 +1,9 @@
+main_filename := "main"
+output_dir := "outputs"
+
+pdf:
+    if [[ ! -d {{ output_dir }} ]]; then mkdir {{ output_dir }}; fi
+    pdflatex -output-directory {{output_dir}} "{{main_filename}}.tex"
+
+open: pdf
+    evince "{{output_dir}}/{{main_filename}}.pdf"

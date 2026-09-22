@@ -1,0 +1,328 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[italian]{babel}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{tikz}
+\usetikzlibrary{automata, positioning, arrows.meta}
+
+\usepackage{tikz-uml}
+\usepackage{xcolor}
+\usepackage{amsmath,amssymb}
+%\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\usepackage{iftex}
+\usepackage{etoolbox}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage[none]{hyphenat}
+\graphicspath{{figures/}}
+\geometry{margin=2.5cm}
+
+\begin{document}
+\title{RMI-Chat\\
+    \Large{Report di progetto per il corso "distributed algorithms"}
+} % Title
+
+\author{\textsc{Alessandro Appio} \\
+    \emph{Matricola n. 207228} \\
+    corso di laurea Magistrale in Informatica\\
+    \emph{296403@studenti.unimore.it}
+  }
+
+\date{\today}
+
+\maketitle % Inserts the title, author and other information
+\newpage
+%----------------------------------------------------------------------------------------
+%	Main Part
+%----------------------------------------------------------------------------------------
+\tableofcontents
+\newpage
+\maketitle
+
+\section{Introduzione}
+Il progetto \texttt{RMI-Chat} realizza un sistema di messaggistica distribuito basato su architettura client-server. I client non comunicano direttamente tra loro, ma attraverso un server centrale che coordina sessioni, canali pubblici e chat private.
+
+\section{Requisiti del sistema}
+\subsection{Requisiti funzionali}
+\begin{itemize}
+  \item \textbf{Connessione client}: il sistema deve consentire al client di connettersi al server tramite URI remoto.
+  \item \textbf{Identità utente}: il server deve garantire unicità dello username durante una sessione attiva.
+  \item \textbf{Lista utenti connessi}: il client deve poter richiedere la lista degli utenti online.
+  \item \textbf{Gestione canali pubblici}: il client deve poter entrare/uscire da un canale pubblico e scambiare messaggi con i membri del canale.
+  \item \textbf{Chat privata}: il client deve poter avviare una conversazione privata con un altro utente connesso.
+  \item \textbf{Notifiche}: il server deve inviare notifiche asincrone ai client (es. richiesta chat privata).
+  \item \textbf{Gestione stato client}: il client deve operare secondo stati espliciti (disconnesso, lobby, canale, privato, uscita).
+\end{itemize}
+
+\subsection{Requisiti non funzionali}
+\begin{itemize}
+  \item \textbf{Modularità}: separazione tra componenti client, server e moduli comuni.
+  \item \textbf{Configurabilità}: parametri server esterni al codice (\texttt{config.toml}).
+  \item \textbf{Usabilità}: interfaccia testuale guidata da menu.
+  \item \textbf{Estendibilità}: possibilità di aggiungere nuove operazioni remote senza modificare l'interfaccia utente di base.
+\end{itemize}
+
+\section{Tecnologie utilizzate}
+Il progetto è stato sviluppato in Python, utilizzando:
+\begin{itemize}
+  \item \textbf{Pyro5} per l'RMI (invocazioni remote tra processi);
+  \item \textbf{inquirer} per l'interfaccia testuale interattiva lato client;
+  \item file \textbf{TOML} per la configurazione del server (host, nome, canali, messaggio di benvenuto).
+\end{itemize}
+
+\section{Architettura del sistema}
+L'architettura è di tipo client-server centralizzato:
+\begin{itemize}
+  \item il \textbf{server} espone i metodi remoti per connessione utenti, gestione canali e inoltro messaggi;
+  \item ogni \textbf{client} si collega al server e registra un proprio oggetto remoto per ricevere messaggi e notifiche.
+\end{itemize}
+
+\subsection{Diagramma architetturale}
+
+\begin{figure}[h!]
+    \centering
+    \begin{tikzpicture}[->, >=Stealth, auto, node distance=5cm, semithick]
+        \tikzstyle{state}=[circle, draw, minimum size=5mm]
+
+        \node[state] (S) {Server};
+        \node[state, above left of=S] (A) {Client A};
+        \node[state, left of=S] (B) {Client B};
+        \node[state, below left of=S] (C) {Client C};
+
+        \path
+        (S) edge node {} (A)
+        (A) edge node {RPC/Callback} (S)
+        (S) edge node {} (B)
+        (B) edge node {RPC/Callback} (S)
+        (S) edge node {} (C)
+        (C) edge node {RPC/Callback} (S);
+    \end{tikzpicture}
+    \caption{Connection diagram}
+    \label{fig:placeholder}
+\end{figure}
+
+Il server mantiene lo stato globale (utenti, canali, richieste private), mentre i client mantengono solo lo stato locale della sessione utente.
+
+\section{Implementazione dei componenti}
+\subsection{Lato server}
+Il server carica la configurazione da \texttt{config/config.toml}, avvia un daemon Pyro e registra l'oggetto \texttt{Chat}.
+
+\noindent Le funzionalità principali implementate sono:
+\begin{itemize}
+  \item connessione/disconnessione utenti con controllo dell'unicità username;
+  \item visualizzazione utenti connessi;
+  \item ingresso/uscita da canali pubblici;
+  \item richiesta e gestione di chat private;
+  \item inoltro messaggi nei canali e nelle chat private;
+  \item notifiche asincrone ai client.
+\end{itemize}
+
+%
+%  CLASS UML DIAGRAM HERE
+%
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+      % 1. Define Class 'Person'
+      \umlclass[x=0, y=0]{Chat}{
+        - clients : ClientInfo[] \\
+        - channels : String[]
+      }{
+        + connect() : int \\
+        + leave() \\
+        + enterChannel() \\
+        + leaveChannel() \\
+        + enterPrivate() : int \\
+        + leavePrivate()
+      }
+
+      % 2. Define Class 'Student' (Positioned right of Person)
+      \umlclass[x=7, y=0]{ClientInfo}{
+        - uri : String\\
+        - username : String\\
+        - channel : String\\
+        - privateRelative : String\\
+        - inChannel : bool\\
+        - inPrivate : bool
+      }{
+        + createProxy() : Pyro5.api.Proxy
+      }
+    \end{tikzpicture}
+    \caption{Classi per il server}
+    \label{fig:placeholder}
+\end{figure}
+
+
+\subsection{Lato client}
+Il client avvia un'interfaccia CLI e una macchina a stati che regola il comportamento dell'applicazione.\\
+Gli stati implementati sono:
+\begin{itemize}
+  \item \texttt{DISCONNECTED}
+  \item \texttt{LOBBY}
+  \item \texttt{CHANNEL}
+  \item \texttt{PRIVATE}
+  \item \texttt{QUIT}
+\end{itemize}
+
+In base allo stato, l'utente può eseguire operazioni diverse (connessione, scelta canale, avvio chat privata, invio messaggi, uscita).
+
+L'intera logica della macchina a stati è gestita nella classe StateMachine e gli stati sono definiti in una classe che funge da enum chiamata State.
+
+Ogni Client espone un oggetto con pyro con tre metodi:
+\begin{itemize}
+    \item \textbf{receive}: per la ricezione di messaggi da altri client quando si trova nello stato CHANNEL o PRIVATE
+    \item \textbf{notify}: per la ricezione di messaggi dal server in qualsiasi stato
+    \item \textbf{quitPrivate}: per comunicare al client in una chat privata che la chat si è conclusa
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+      % 1. Define Class 'Person'
+      \umlclass[x=0, y=0]{Client}{
+        - state: State\\
+        - username: String\\
+        - uri: String\\
+        - chat: Pyro5.api.Proxy\\
+        - currentChannel: String\\
+        - otherPrivate: String
+      }{
+        + receive(sender, msg) \\
+        + notify(msg) \\
+        + quitPrivate(msg)
+      }
+
+      % 2. Define Class 'Student' (Positioned right of Person)
+      \umlclass[x=7, y=1]{StateMachine}{
+        - client: Client
+      }{
+        + disconnected()\\
+        + lobby()\\
+        + channel()\\
+        + private()
+      }
+
+      \umlclass[x=7, y=-3]{State}{
+        - DISCONNECTED \\
+        - LOBBY \\
+        - CHANNEL \\
+        - PRIVATE \\
+      }{}
+    \end{tikzpicture}
+    \caption{Classi per il client}
+    \label{fig:placeholder}
+\end{figure}
+
+\section{Protocolli di comunicazione}
+\subsection{Protocollo client-server adottato}
+Il protocollo è di tipo \textbf{client-server} su chiamate remote sincrone (RPC) con callback asincrone verso i client. Non è adottato un protocollo peer-to-peer.
+
+\subsection{Diagramma di sequenza -- connessione}
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node distance=2.5cm,
+        state/.style={rectangle, draw, rounded corners, minimum height=0.8cm, align=center, fill=gray!10},
+        arrow/.style={->, >=stealth, thick}
+    ]
+        % Nodi
+        \node[state] (disc) {Disconnesso\\Menu disconnesso};
+        \node[state, right=of disc] (check) {Connessione\\Esito};
+        \node[state, right=of check] (welc) {Benvenuto};
+        \node[state, right=of welc] (conn) {Connesso\\Menu lobby};
+
+        % Transizioni
+        \draw[arrow] (disc) -- node[above, font=\small]{\texttt{connect()}} (check);
+        \draw[arrow] (check) -- node[above, font=\small]{Esito = 0} node[below, font=\small]{\texttt{welcome()}} (welc);
+        \draw[arrow] (welc) -- node[above, font=\small] {} (conn);
+        \draw[arrow] (check.south) -- ++(0,-0.5) -| node[near start, below, font=\small]{Esito = Errore} (disc.south);
+
+    \end{tikzpicture}
+    \caption{Macchina a stati della connessione lato Client.}
+\end{figure}
+
+\subsection{Diagramma di sequenza -- messaggio in canale}
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[
+        node distance=2cm and 3cm,
+        state/.style={rectangle, draw, rounded corners, minimum height=0.9cm, align=center, fill=gray!10},
+        arrow/.style={->, >=stealth, thick}
+    ]
+
+        % Nodi
+        \node[state] (enter) {Ingresso\\Canale};
+        \node[state, below=of enter] (idle) {In Attesa\\Messaggi};
+        \node[state, right=of idle] (id_chan) {Identificazione\\Canale};
+        \node[state, right=of id_chan] (loop) {Inoltro Broadcast\\(per ogni client)};
+
+        % Transizioni
+        \draw[arrow] (enter) -- node[right, font=\small]{\texttt{enterChannel(uri, channel)}} (idle);
+        \draw[arrow] (idle) -- node[above, font=\small]{\texttt{send(uri, msg)}} (id_chan);
+        \draw[arrow] (id_chan) -- node[above, font=\small]{Canale} node[below, font=\small]{Identificato} (loop);
+        \draw[arrow] (loop) edge[loop above] node[font=\small, align=center]{\texttt{receive()}\\a client $D_i$} (loop);
+        \draw[arrow] (loop.south) -- ++(0,-0.6) -| node[near start, below, font=\small]{Fine Lista Client} (idle.south);
+
+    \end{tikzpicture}
+    \caption{Macchina a stati dell'inoltro messaggio lato Server.}
+\end{figure}
+
+\subsection{Diagramma di sequenza -- avvio chat privata}
+
+Prendiamo in considerazione due client, chiamati $A$ e $B$, di seguito il diagramma che riguarda $A$.
+
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm and 3cm,
+        state/.style={rectangle, draw, rounded corners, minimum height=0.9cm, align=center, fill=gray!10},
+        arrow/.style={->, >=stealth, thick}
+    ]
+
+        % Nodi
+        \node[state] (enter) {Richiesta chat\\privata};
+        \node[state, below=of enter] (wait) {In Attesa\\agreement di $B$};
+        \node[state, below=of wait] (idle) {Ingresso chat};
+        \node[state, right=of idle] (id_chan) {Identificazione\\uri di $B$};
+        \node[state, right=of id_chan] (loop) {Inoltro a $B$};
+
+        % Transizioni
+        \draw[arrow] (enter) -- node[right, font=\small]{\texttt{enterChannel(uri, channel)}} (wait);
+        \draw[arrow] (wait) -- node[right, font=\small]{Agreement} (idle);
+        \draw[arrow] (idle) -- node[above, font=\small]{\texttt{send(uri, msg)}} (id_chan);
+        \draw[arrow] (id_chan) -- node[above, font=\small]{uri} node[below, font=\small]{Identificato} (loop);
+        \draw[arrow] (loop) edge[loop above] node[font=\small, align=center]{\texttt{receive()}\\a client $B$} (loop);
+        \draw[arrow] (loop.south) -- ++(0,-0.6) -| node[near start, below, font=\small]{} (idle.south);
+
+    \end{tikzpicture}
+    \caption{Macchina a stati dell'inoltro messaggio lato Server.}
+\end{figure}
+
+\section{Funzionamento operativo}
+Flusso operativo tipico:
+\begin{enumerate}
+  \item avvio del server;
+  \item avvio di uno o più client;
+  \item connessione client al server con username;
+  \item ingresso in canale pubblico o apertura chat privata;
+  \item scambio di messaggi in tempo reale;
+  \item uscita dalla conversazione e disconnessione.
+\end{enumerate}
+
+\section{Risultati ottenuti}
+Il sistema realizzato soddisfa i requisiti principali di una chat distribuita didattica:
+\begin{itemize}
+  \item comunicazione remota funzionante tra nodi distinti;
+  \item supporto a conversazioni sia pubbliche sia private;
+  \item gestione dello stato client in modo chiaro;
+  \item configurabilità del server senza modifiche al codice.
+\end{itemize}
+
+\section{Conclusioni}
+Il progetto ha permesso di applicare in modo pratico i concetti di sistemi distribuiti e invocazione remota di metodi. La soluzione implementata è modulare, estendibile e adatta a dimostrare le principali dinamiche di coordinamento client-server in un contesto di messaggistica.
+
+\end{document}
